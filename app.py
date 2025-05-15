@@ -5,13 +5,10 @@ import plotly.graph_objects as go
 
 # Configuração da página
 st.set_page_config(
-    page_title="Visualização de Mapas com População",
-    page_icon="🌍",
+    page_title="Mapas em Streamlit",
+    page_icon="🗺️",
     layout="wide"
 )
-
-# Título da aplicação
-st.title("Visualização Interativa de Mapas do Brasil com Dados de População")
 
 # Sidebar
 st.sidebar.title("🗺️ Mapas em Streamlit")
@@ -35,28 +32,25 @@ st.sidebar.subheader("Filtros Geográficos")
 # Selecionar o tipo de mapa
 map_option = st.sidebar.selectbox(
     "Opção de Mapa:",
-    ("Streamlit - Nativo", "Plotly Express - Marcadores", "Plotly Express - Mapa de Calor", "Plotly Express - Tamanho da População"),
+    ("Streamlit - Nativo", "Plotly Express - Marcadores", "Plotly Express - Mapa de Calor", "Plotly Express - Tamanho"),
     help="Selecione o motor de renderização do mapa"
 )
 
-# Filtrar por estado
+# Filtar por estado
 if map_option != "Streamlit - Nativo":
     filtrar_por_estado = st.sidebar.checkbox("Filtrar por Estado", value=False)
     if filtrar_por_estado:
         estado_selecionado = st.sidebar.selectbox(
             "Selecione o estado:",
-            ["Todos os Estados"] + list(estados['nome'].unique())
+            sorted(estados['nome'].unique())
         )
         df_estado = df_merged[df_merged['estado'] == estado_selecionado].copy()
     else:
         estado_selecionado = "Todos os Estados"
         df_estado = df_merged.copy()
 else:
-    estado_selecionado = st.sidebar.selectbox(
-        "Selecionar estado para Mapa Streamlit:",
-        ["Todos os Estados"] + list(estados['nome'].unique())
-    )
     df_estado = df_merged.copy()
+
 
 # Filtrar por região
 regioes_brasil = df_estado['regiao'].unique()
@@ -72,7 +66,7 @@ ufs_brasil = df_filtered_regiao['uf'].unique()
 filtrar_por_uf = st.sidebar.checkbox("Filtrar por Unidade Federativa (UF)", value=False)
 if filtrar_por_uf:
     uf_selecionada = st.sidebar.multiselect("Selecione a(s) UF(s):", ufs_brasil)
-    df_final = df_filtered_regiao[df_filtered_regiao['uf'].isin(uf_selecionada)].copy()
+    df_final = df_filtered_regiao[df_filtered_regiao['uf'].isin(uf_selecionada)]
 else:
     df_final = df_filtered_regiao.copy()
 
@@ -104,7 +98,7 @@ if map_option.startswith("Plotly Express"):
         color_column = None
 
     # Opções específicas para o mapa de tamanho da população
-    if map_option == "Plotly Express - Tamanho da População":
+    if map_option == "Plotly Express - Tamanho":
         tamanho_pop = st.sidebar.checkbox("Mostrar tamanho do marcador pela população", value=True)
         max_tamanho_marcador = st.sidebar.slider("Tamanho máximo do marcador:", 5, 50, 20)
     else:
@@ -119,6 +113,11 @@ config = {'scrollZoom': True}
 
 if map_option == "Plotly Express - Marcadores":
     st.write("Este mapa utiliza marcadores para representar a localização dos municípios. Passe o mouse para detalhes.")
+    with st.expander("Detalhes do mapa"):
+        st.markdown("O ```px.scatter_mapbox``` é uma função do Plotly Express que cria mapas interativos com pontos georreferenciados, " \
+        "permitindo visualizar a distribuição espacial dos dados sobre um mapa. " \
+        "Ele utiliza coordenadas de latitude e longitude para posicionar marcadores e suporta diversas opções de customização e interação. "
+        "Saiba mais na [Documentação](https://plotly.com/python/scatter-plots-on-maps/).")
     fig = px.scatter_mapbox(
         df_final,
         lat="latitude",
@@ -134,26 +133,36 @@ if map_option == "Plotly Express - Marcadores":
 
 elif map_option == "Plotly Express - Mapa de Calor":
     st.write("Este mapa de calor mostra a densidade de municípios. Cores intensas indicam maior concentração.")
+    with st.expander("Detalhes do mapa"):
+        st.markdown("O ```px.density_map``` é uma função do Plotly Express que gera mapas de calor interativos sobre mapas baseados em coordenadas geográficas. " \
+        "Ela representa a concentração de pontos (densidade) usando variações de cor, facilitando a visualização de áreas com maior ou menor " \
+        "aglomeração de dados. "
+        "Saiba mais na [Documentação](https://plotly.com/python/density-heatmaps/).")
     fig = px.density_mapbox(
         df_final,
         lat="latitude",
         lon="longitude",
-        z=df_final.index,
+        z=df_final.index,  # Usando o índice como medida de densidade
         radius=10,
         center=go.layout.mapbox.Center(
-            lat=df_final['latitude'].mean(),
+            lat=df_final['latitude'].mean(), 
             lon=df_final['longitude'].mean()
         ),
         zoom=initial_zoom,
         mapbox_style=map_style,
         height=map_height
     )
-    st.plotly_chart(fig, config=config, use_container_width=True)
+    st.plotly_chart(fig, config=config, use_container_width=True, margin=dict(l=0, r=0, t=0, b=0))
 
-elif map_option == "Plotly Express - Tamanho da População":
+elif map_option == "Plotly Express - Tamanho":
     st.write("Este mapa exibe marcadores onde o tamanho é proporcional à população do município em 2021.")
+    with st.expander("Detalhes do mapa"):
+        st.markdown("O ```px.scatter_map``` é uma função do Plotly Express que cria mapas interativos com pontos georreferenciados, " \
+        "permitindo visualizar a distribuição espacial dos dados sobre um mapa. " \
+        "Ele utiliza coordenadas de latitude e longitude para posicionar marcadores e suporta diversas opções de customização e interação. "
+        "Saiba mais na [Documentação](https://plotly.com/python/tile-scatter-maps/).")
     if tamanho_pop:
-        fig = px.scatter_mapbox(
+        fig = px.scatter_map(
             df_final,
             lat="latitude",
             lon="longitude",
@@ -172,6 +181,9 @@ elif map_option == "Plotly Express - Tamanho da População":
 
 elif map_option == "Streamlit - Nativo":
     st.write("Mapa interativo básico do Streamlit para exibir pontos geográficos.")
+    with st.expander("Detalhes do mapa"):
+        st.markdown("Este mapa é renderizado usando a biblioteca nativa do Streamlit (st.map). Ele não possui opções de personalização avançadas como os mapas Plotly, " \
+        "mas é útil para visualizações rápidas. Saiba mais sobre o st.map [aqui](https://docs.streamlit.io/library/api-reference/charts/st.map).")
     if not df_final.empty:
         st.map(df_final[['latitude', 'longitude']], height=700, use_container_width=True)
     else:
@@ -182,7 +194,6 @@ with st.expander("Visualizar Dados Filtrados"):
 
 with st.expander("Visualizar Dados Brutos"):
     st.dataframe(df_merged)
-
 
 
 # --- Rodapé ---
