@@ -39,7 +39,7 @@ map_option = st.sidebar.selectbox(
     help="Selecione o motor de renderização do mapa"
 )
 
-# Filtrar por estado (Removido quando o mapa é Nativo)
+# Filtrar por estado
 if map_option != "Streamlit - Nativo":
     filtrar_por_estado = st.sidebar.checkbox("Filtrar por Estado", value=False)
     if filtrar_por_estado:
@@ -52,6 +52,10 @@ if map_option != "Streamlit - Nativo":
         estado_selecionado = "Todos os Estados"
         df_estado = df_merged.copy()
 else:
+    estado_selecionado = st.sidebar.selectbox(
+        "Selecionar estado para Mapa Streamlit:",
+        ["Todos os Estados"] + list(estados['nome'].unique())
+    )
     df_estado = df_merged.copy()
 
 # Filtrar por região
@@ -59,7 +63,7 @@ regioes_brasil = df_estado['regiao'].unique()
 filtrar_por_regiao = st.sidebar.checkbox("Filtrar por Região", value=False)
 if filtrar_por_regiao:
     regiao_selecionada = st.sidebar.multiselect("Selecione a(s) região(ões):", regioes_brasil)
-    df_filtered_regiao = df_estado[df_estado['regiao'].isin(regiao_selecionada)].copy()
+    df_filtered_regiao = df_estado[df_estado['regiao'].isin(regiao_selecionada)]
 else:
     df_filtered_regiao = df_estado.copy()
 
@@ -113,67 +117,65 @@ st.subheader(f"Mapa {map_option.split(' - ')[-1] if ' - ' in map_option else map
 
 config = {'scrollZoom': True}
 
-def plot_map(df, map_type, style, zoom, height, color=None, size=None, size_max=20):
-    """Função para plotar o mapa com base nos parâmetros fornecidos."""
-    if map_type == "Plotly Express - Marcadores":
-        st.write("Este mapa utiliza marcadores para representar a localização dos municípios. Passe o mouse para detalhes.")
+if map_option == "Plotly Express - Marcadores":
+    st.write("Este mapa utiliza marcadores para representar a localização dos municípios. Passe o mouse para detalhes.")
+    fig = px.scatter_mapbox(
+        df_final,
+        lat="latitude",
+        lon="longitude",
+        hover_name="municipio",
+        hover_data=["estado", "uf", "regiao", "pop_21"],
+        color=color_column,
+        zoom=initial_zoom,
+        height=map_height
+    )
+    fig.update_layout(mapbox_style=map_style, dragmode='zoom', showlegend=False, margin=dict(l=0, r=0, t=0, b=0))
+    st.plotly_chart(fig, config=config, use_container_width=True)
+
+elif map_option == "Plotly Express - Mapa de Calor":
+    st.write("Este mapa de calor mostra a densidade de municípios. Cores intensas indicam maior concentração.")
+    fig = px.density_mapbox(
+        df_final,
+        lat="latitude",
+        lon="longitude",
+        z=df_final.index,
+        radius=10,
+        center=go.layout.mapbox.Center(
+            lat=df_final['latitude'].mean(),
+            lon=df_final['longitude'].mean()
+        ),
+        zoom=initial_zoom,
+        mapbox_style=map_style,
+        height=map_height
+    )
+    st.plotly_chart(fig, config=config, use_container_width=True)
+
+elif map_option == "Plotly Express - Tamanho da População":
+    st.write("Este mapa exibe marcadores onde o tamanho é proporcional à população do município em 2021.")
+    if tamanho_pop:
         fig = px.scatter_mapbox(
-            df,
+            df_final,
             lat="latitude",
             lon="longitude",
             hover_name="municipio",
             hover_data=["estado", "uf", "regiao", "pop_21"],
-            color=color,
-            zoom=zoom,
-            height=height
+            size="pop_21",
+            size_max=max_tamanho_marcador,
+            zoom=initial_zoom,
+            height=map_height
         )
-        fig.update_layout(mapbox_style=style, dragmode='zoom', showlegend=False, margin=dict(l=0, r=0, t=0, b=0))
+        fig.update_layout(mapbox_style=map_style, dragmode='zoom', showlegend=False, margin=dict(l=0, r=0, t=0, b=0))
         st.plotly_chart(fig, config=config, use_container_width=True)
+    else:
+        st.info("Selecione a opção 'Mostrar tamanho do marcador pela população' na barra lateral.")
 
-    elif map_type == "Plotly Express - Mapa de Calor":
-        st.write("Este mapa de calor mostra a densidade de municípios. Cores intensas indicam maior concentração.")
-        fig = px.density_mapbox(
-            df,
-            lat="latitude",
-            lon="longitude",
-            z=df.index,
-            radius=10,
-            center=go.layout.mapbox.Center(
-                lat=df['latitude'].mean(),
-                lon=df['longitude'].mean()
-            ),
-            zoom=zoom,
-            mapbox_style=style,
-            height=height
-        )
-        st.plotly_chart(fig, config=config, use_container_width=True)
 
-    elif map_type == "Plotly Express - Tamanho da População":
-        st.write("Este mapa exibe marcadores onde o tamanho é proporcional à população do município em 2021.")
-        if size:
-            fig = px.scatter_mapbox(
-                df,
-                lat="latitude",
-                lon="longitude",
-                hover_name="municipio",
-                hover_data=["estado", "uf", "regiao", "pop_21"],
-                size=size,
-                size_max=size_max,
-                zoom=zoom,
-                height=height
-            )
-            fig.update_layout(mapbox_style=style, dragmode='zoom', showlegend=False, margin=dict(l=0, r=0, t=0, b=0))
-            st.plotly_chart(fig, config=config, use_container_width=True)
-        else:
-            st.info("Selecione a opção 'Mostrar tamanho do marcador pela população' na barra lateral.")
-
-    elif map_type == "Streamlit - Nativo":
-        st.write("Mapa interativo básico do Streamlit para exibir pontos geográficos.")
-        if not df.empty:
-            st.map(df[['latitude', 'longitude']], height=600, use_container_width=True)
-        else:
-            st.warning("Não há dados para exibir com os filtros selecionados.")
-
+elif map_option == "Streamlit - Nativo":
+    st.write("Mapa interativo básico do Streamlit para exibir pontos geográficos.")
+    if not df_final.empty:
+        st.map(df_final[['latitude', 'longitude']], height=700, use_container_width=True)
+    else:
+        st.warning("Não há dados para exibir com os filtros selecionados.")
 
 with st.expander("Visualizar Dados Filtrados"):
     st.dataframe(df_final)
