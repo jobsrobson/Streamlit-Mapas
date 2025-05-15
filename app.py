@@ -170,14 +170,9 @@ def plot_map(df, map_type, style, zoom, height, color=None, size=None, size_max=
     elif map_type == "Streamlit - Nativo":
         st.write("Mapa interativo básico do Streamlit para exibir pontos geográficos.")
         if not df.empty:
-            st.map(df[['latitude', 'longitude']], height=height, use_container_width=True)
+            st.map(df[['latitude', 'longitude']], height=600, use_container_width=True)
         else:
             st.warning("Não há dados para exibir com os filtros selecionados.")
-
-if map_option == "Streamlit - Nativo":
-    plot_map(df_final, map_option, None, None, map_height)
-else:
-    plot_map(df_final, map_option, map_style, initial_zoom, map_height, color_column, "pop_21" if tamanho_pop else None, max_tamanho_marcador)
 
 
 with st.expander("Visualizar Dados Filtrados"):
