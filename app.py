@@ -39,16 +39,19 @@ map_option = st.sidebar.selectbox(
     help="Selecione o motor de renderização do mapa"
 )
 
-# Filtrar por estado
-filtrar_por_estado = st.sidebar.checkbox("Filtrar por Estado", value=False)
-if filtrar_por_estado:
-    estado_selecionado = st.sidebar.selectbox(
-        "Selecione o estado:",
-        ["Todos os Estados"] + list(estados['nome'].unique())
-    )
-    df_estado = df_merged[df_merged['estado'] == estado_selecionado].copy()
+# Filtrar por estado (Removido quando o mapa é Nativo)
+if map_option != "Streamlit - Nativo":
+    filtrar_por_estado = st.sidebar.checkbox("Filtrar por Estado", value=False)
+    if filtrar_por_estado:
+        estado_selecionado = st.sidebar.selectbox(
+            "Selecione o estado:",
+            ["Todos os Estados"] + list(estados['nome'].unique())
+        )
+        df_estado = df_merged[df_merged['estado'] == estado_selecionado].copy()
+    else:
+        estado_selecionado = "Todos os Estados"
+        df_estado = df_merged.copy()
 else:
-    estado_selecionado = "Todos os Estados"
     df_estado = df_merged.copy()
 
 # Filtrar por região
@@ -56,7 +59,7 @@ regioes_brasil = df_estado['regiao'].unique()
 filtrar_por_regiao = st.sidebar.checkbox("Filtrar por Região", value=False)
 if filtrar_por_regiao:
     regiao_selecionada = st.sidebar.multiselect("Selecione a(s) região(ões):", regioes_brasil)
-    df_filtered_regiao = df_estado[df_estado['regiao'].isin(regiao_selecionada)].copy()  # Correção: .copy() adicionado
+    df_filtered_regiao = df_estado[df_estado['regiao'].isin(regiao_selecionada)].copy()
 else:
     df_filtered_regiao = df_estado.copy()
 
@@ -65,7 +68,7 @@ ufs_brasil = df_filtered_regiao['uf'].unique()
 filtrar_por_uf = st.sidebar.checkbox("Filtrar por Unidade Federativa (UF)", value=False)
 if filtrar_por_uf:
     uf_selecionada = st.sidebar.multiselect("Selecione a(s) UF(s):", ufs_brasil)
-    df_final = df_filtered_regiao[df_filtered_regiao['uf'].isin(uf_selecionada)].copy()  # Correção: .copy() adicionado
+    df_final = df_filtered_regiao[df_filtered_regiao['uf'].isin(uf_selecionada)].copy()
 else:
     df_final = df_filtered_regiao.copy()
 
@@ -172,9 +175,9 @@ def plot_map(df, map_type, style, zoom, height, color=None, size=None, size_max=
             st.warning("Não há dados para exibir com os filtros selecionados.")
 
 if map_option == "Streamlit - Nativo":
-    plot_map(df_final, map_option, None, None)
+    plot_map(df_final, map_option, None, None, map_height)
 else:
-    plot_map(df_final, map_option, map_style, initial_zoom, color_column, "pop_21" if tamanho_pop else None, max_tamanho_marcador)
+    plot_map(df_final, map_option, map_style, initial_zoom, map_height, color_column, "pop_21" if tamanho_pop else None, max_tamanho_marcador)
 
 
 with st.expander("Visualizar Dados Filtrados"):
@@ -182,7 +185,6 @@ with st.expander("Visualizar Dados Filtrados"):
 
 with st.expander("Visualizar Dados Brutos"):
     st.dataframe(df_merged)
-
 
 
 
