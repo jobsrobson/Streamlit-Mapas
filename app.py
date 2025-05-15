@@ -172,9 +172,9 @@ def plot_map(df, map_type, style, zoom, height, color=None, size=None, size_max=
             st.warning("Não há dados para exibir com os filtros selecionados.")
 
 if map_option == "Streamlit - Nativo":
-    plot_map(df_final, map_option, None, None, map_height)
+    plot_map(df_final, map_option, None, None)
 else:
-    plot_map(df_final, map_option, map_style, initial_zoom, map_height, color_column, "pop_21" if tamanho_pop else None, max_tamanho_marcador)
+    plot_map(df_final, map_option, map_style, initial_zoom, color_column, "pop_21" if tamanho_pop else None, max_tamanho_marcador)
 
 
 with st.expander("Visualizar Dados Filtrados"):
