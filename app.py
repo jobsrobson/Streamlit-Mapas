@@ -162,7 +162,7 @@ elif map_option == "Plotly Express - Tamanho":
         "Ele utiliza coordenadas de latitude e longitude para posicionar marcadores e suporta diversas opções de customização e interação. "
         "Saiba mais na [Documentação](https://plotly.com/python/tile-scatter-maps/).")
     if tamanho_pop:
-        fig = px.scatter_map(
+        fig = px.scatter_mapbox(
             df_final,
             lat="latitude",
             lon="longitude",
