@@ -5,10 +5,13 @@ import plotly.graph_objects as go
 
 # Configuração da página
 st.set_page_config(
-    page_title="Mapas em Streamlit",
-    page_icon="🗺️",
+    page_title="Visualização de Mapas com População",
+    page_icon="🌍",
     layout="wide"
 )
+
+# Título da aplicação
+st.title("Visualização Interativa de Mapas do Brasil com Dados de População")
 
 # Sidebar
 st.sidebar.title("🗺️ Mapas em Streamlit")
@@ -32,19 +35,19 @@ st.sidebar.subheader("Filtros Geográficos")
 # Selecionar o tipo de mapa
 map_option = st.sidebar.selectbox(
     "Opção de Mapa:",
-    ("Streamlit - Nativo", "Plotly Express - Marcadores", "Plotly Express - Mapa de Calor", "Plotly Express - Tamanho"),
+    ("Streamlit - Nativo", "Plotly Express - Marcadores", "Plotly Express - Mapa de Calor", "Plotly Express - Tamanho da População"),
     help="Selecione o motor de renderização do mapa"
 )
 
-# Filtar por estado
+# Filtrar por estado
 if map_option != "Streamlit - Nativo":
     filtrar_por_estado = st.sidebar.checkbox("Filtrar por Estado", value=False)
     if filtrar_por_estado:
         estado_selecionado = st.sidebar.selectbox(
             "Selecione o estado:",
-            sorted(estados['nome'].unique())
+            ["Todos os Estados"] + list(estados['nome'].unique())
         )
-        df_estado = df_merged[df_merged['estado'] == estado_selecionado].copy()  # Filtra df_merged
+        df_estado = df_merged[df_merged['estado'] == estado_selecionado].copy()
     else:
         estado_selecionado = "Todos os Estados"
         df_estado = df_merged.copy()
@@ -53,15 +56,14 @@ else:
         "Selecionar estado para Mapa Streamlit:",
         ["Todos os Estados"] + list(estados['nome'].unique())
     )
-    df_estado = df_merged.copy() # Garante que df_estado esteja definido para o Streamlit também
-
+    df_estado = df_merged.copy()
 
 # Filtrar por região
-regioes_brasil = df_estado['regiao'].unique() # Usa df_estado já filtrado
+regioes_brasil = df_estado['regiao'].unique()
 filtrar_por_regiao = st.sidebar.checkbox("Filtrar por Região", value=False)
 if filtrar_por_regiao:
     regiao_selecionada = st.sidebar.multiselect("Selecione a(s) região(ões):", regioes_brasil)
-    df_filtered_regiao = df_estado[df_estado['regiao'].isin(regiao_selecionada)] # Aplica filtro à df_estado
+    df_filtered_regiao = df_estado[df_estado['regiao'].isin(regiao_selecionada)]
 else:
     df_filtered_regiao = df_estado.copy()
 
@@ -70,7 +72,7 @@ ufs_brasil = df_filtered_regiao['uf'].unique()
 filtrar_por_uf = st.sidebar.checkbox("Filtrar por Unidade Federativa (UF)", value=False)
 if filtrar_por_uf:
     uf_selecionada = st.sidebar.multiselect("Selecione a(s) UF(s):", ufs_brasil)
-    df_final = df_filtered_regiao[df_filtered_regiao['uf'].isin(uf_selecionada)] # Cria novo df para exibição
+    df_final = df_filtered_regiao[df_filtered_regiao['uf'].isin(uf_selecionada)].copy()
 else:
     df_final = df_filtered_regiao.copy()
 
@@ -102,7 +104,7 @@ if map_option.startswith("Plotly Express"):
         color_column = None
 
     # Opções específicas para o mapa de tamanho da população
-    if map_option == "Plotly Express - Tamanho":
+    if map_option == "Plotly Express - Tamanho da População":
         tamanho_pop = st.sidebar.checkbox("Mostrar tamanho do marcador pela população", value=True)
         max_tamanho_marcador = st.sidebar.slider("Tamanho máximo do marcador:", 5, 50, 20)
     else:
@@ -118,7 +120,7 @@ config = {'scrollZoom': True}
 if map_option == "Plotly Express - Marcadores":
     st.write("Este mapa utiliza marcadores para representar a localização dos municípios. Passe o mouse para detalhes.")
     fig = px.scatter_mapbox(
-        df_final, # Usa df_final
+        df_final,
         lat="latitude",
         lon="longitude",
         hover_name="municipio",
@@ -133,13 +135,13 @@ if map_option == "Plotly Express - Marcadores":
 elif map_option == "Plotly Express - Mapa de Calor":
     st.write("Este mapa de calor mostra a densidade de municípios. Cores intensas indicam maior concentração.")
     fig = px.density_mapbox(
-        df_final, # Usa df_final
+        df_final,
         lat="latitude",
         lon="longitude",
-        z=df_final.index,  # Usando o índice como medida de densidade
+        z=df_final.index,
         radius=10,
         center=go.layout.mapbox.Center(
-            lat=df_final['latitude'].mean(), # Usa df_final
+            lat=df_final['latitude'].mean(),
             lon=df_final['longitude'].mean()
         ),
         zoom=initial_zoom,
@@ -148,11 +150,11 @@ elif map_option == "Plotly Express - Mapa de Calor":
     )
     st.plotly_chart(fig, config=config, use_container_width=True)
 
-elif map_option == "Plotly Express - Tamanho":
+elif map_option == "Plotly Express - Tamanho da População":
     st.write("Este mapa exibe marcadores onde o tamanho é proporcional à população do município em 2021.")
     if tamanho_pop:
         fig = px.scatter_mapbox(
-            df_final, # Usa df_final
+            df_final,
             lat="latitude",
             lon="longitude",
             hover_name="municipio",
@@ -170,16 +172,17 @@ elif map_option == "Plotly Express - Tamanho":
 
 elif map_option == "Streamlit - Nativo":
     st.write("Mapa interativo básico do Streamlit para exibir pontos geográficos.")
-    if not df_final.empty: # Usa df_final
+    if not df_final.empty:
         st.map(df_final[['latitude', 'longitude']], height=700, use_container_width=True)
     else:
         st.warning("Não há dados para exibir com os filtros selecionados.")
 
 with st.expander("Visualizar Dados Filtrados"):
-    st.dataframe(df_final) # Exibe df_final
+    st.dataframe(df_final)
 
 with st.expander("Visualizar Dados Brutos"):
     st.dataframe(df_merged)
+
 
 
 # --- Rodapé ---
